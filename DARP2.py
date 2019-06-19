@@ -1,28 +1,22 @@
+#Vragen: L.P.Stoop@uu.nl
 import numpy
 import csv
 import pandas
 import re
 import nltk
+import word2vec.py
+
 from tokenize import tokenize
-from nltk.corpus import wordnet
-synonyms = []
-antonyms = []
-
-for syn in wordnet.synsets("active"):
-	for l in syn.lemmas():
-		synonyms.append(l.name())
-		if l.antonyms():
-			 antonyms.append(l.antonyms()[0].name())
-
-print(type(synonyms[0].str()))
-print(set(antonyms))
 
 
-qp = pandas.read_csv('query_product.csv')
+qp = pandas.read_csv('query_product2.csv')
+
 
 def removeBrackets(qp):  
     qp["product_title"] = qp["product_title"].replace("\(.*\)", "", regex=True)
     return qp
+
+#print(removeBrackets(qp)['product_title'])
 
 
 def get_term_frequency_matrix(doc):
@@ -71,7 +65,29 @@ def euclidean_distance(query,title):
     
     return numpy.sqrt(result)
 
-#print(euclidean_distance("komt komt gat hoi","komt mehha hoi"))
+def create_stopwords_set():
+    with open('stopwords.txt') as f:
+        data = f.readlines()
+
+    stopword_set = set()
+
+    for line in data:
+        if line != "":
+            stopword_set.add(line[:-1])     #-1 to remove newline
+    return stopword_set
+
+def removeStopwords(input):
+    stopwords = create_stopwords_set()
+    tokenized_input = nltk.word_tokenize(input)
+    output = list()    
+
+    for i in range(0,len(tokenized_input)):
+        if not tokenized_input[i] in stopwords:
+            output.append(tokenized_input[i])
+
+    return output
+
+print(removeStopwords("hi my name is Niels and I really like this function"))
 
 
 
