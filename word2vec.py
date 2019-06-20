@@ -6,22 +6,26 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 import warnings 
 import pandas
 import pickle
-
-warnings.filterwarnings(action = 'ignore') 
-
+import time
 import gensim 
 from gensim.models import Word2Vec 
 
-def train_word2vec():
+def create_description_pickle():
+	pd = pandas.read_csv('product_descriptions.csv')['product_description']
+	pickle.dump(pd, open("descriptions.p", "wb"))
+
+def train_word2vec(no_docs, mincount = 1, grootte = 100, raam = 5):
 	
-	pd = pandas.read_csv('product_descriptions.csv')['product_description'][:500]
+	descriptions = pickle.load(open("descriptions.p", "rb"))
+	pd = descriptions[:no_docs]
 
 	data = []
 
 	# iterate through each sentence in the file
 	count = 1 
 	for doc in pd:
-		print("doc " + str(count))
+		if count % 50 == 0:
+			print("doc " + str(count))
 		count += 1
 		for i in sent_tokenize(doc): 
 			temp = [] 
@@ -32,33 +36,66 @@ def train_word2vec():
 
 			data.append(temp) 
 
-	print("train CBOW model")
+	print("train CBOW model. no_docs: " + str(no_docs) + " size: " + str(grootte) + " window: " + str(raam))
+
 	# Create CBOW model - Continuous bag of words 
-	model1 = gensim.models.Word2Vec(data, min_count = 1, 
-								size = 100, window = 5) 
-	"""print("train skip gram model")
-	# Create Skip Gram model 
-	model2 = gensim.models.Word2Vec(data, min_count = 1, size = 100, 
-												window = 5, sg = 1) 
-												"""
-	print("done")
-	
-	pickle.dump(model1, open("model1.p", "wb"))
+	model1 = gensim.models.Word2Vec(data, min_count = mincount, 
+								size = grootte, window = raam) 
 
 	return(model1)
 
-def apply_word2vec(word1, word2):
-	print("apply model1")
+def apply_word2vec(query, title):
+	print("model similarity for " + word1 + " and " + word2)
 	model1 = pickle.load(open("model1.p", "rb"))
 
-	model1_sim = model1.similarity(word1,word2)
-	"""
-	print("apply model2")
-	model2_sim = model2.similarity(word1,word2)
-	"""
-	return(model1_sim)
-	#return (model1_sim,model2_sim)
+	similarity_sum = 0.0
+	no_comparisions = 0.0
 
-(CBOWmodel) = train_word2vec()   #  "This is sentence 1. This is sentece 2. Is there a pattern between these sentences?")
+	for queryword in query:
+		for titleword in title:
+			no_comparisions += 1
+			try:			
+				similarity_sum += model1.similarity(queryword,titleword)
+			except:
+				similarity_sum += 0
+				no_comparisions -= 1
 
-print(apply_word2vec("they", "also"))
+	avg_similarity = similarity_sum / no_comparisions
+
+	return(avg_similarity)
+	
+
+def stopwatch(start):
+	duration = time.time() - start
+	print(duration)
+
+	return duration
+def train_multiple_models(no_docs):
+
+	### size 50 100 150.  Window 5. ###
+	print("### SIZE ###")
+	train_single_model(no_docs, 50, 5)
+	train_single_model(no_docs, 100, 5)
+	train_single_model(no_docs, 150, 5)	
+	#####################################
+
+
+	### window 3 5 7 9.  size 100. . ###
+	print()
+	print("### WINDOW ###")
+	train_single_model(no_docs, 100, 3)
+	train_single_model(no_docs, 100, 5)
+	train_single_model(no_docs, 100, 7)
+	train_single_model(no_docs, 100, 9)
+	#####################################
+
+def train_single_model(no_docs, size, window):
+	path = "word2vec models\\"
+
+	start = time.time()
+	model = train_word2vec(no_docs, 1, size, window)
+	duration = stopwatch(start)
+	pickle.dump(model, open(path + "docs_" + str(no_docs) + "_mc1_size" + str(size) + "_window" + str(window) + "_duraton" + str(duration) + ".p", "wb"))	
+
+#train_multiple_models(10)
+
